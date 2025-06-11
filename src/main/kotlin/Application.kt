@@ -7,6 +7,8 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
+    DatabaseFactory.init()
+
     configureSerialization()
     configureMonitoring()
     configureSecurity()
