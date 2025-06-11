@@ -1,16 +1,16 @@
 package com.example
 
+import com.example.model.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import io.ktor.server.plugins.calllogging.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.serialization.Serializable
-import org.slf4j.event.*
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
+
 
 fun Application.configureRouting() {
     routing {
@@ -18,60 +18,96 @@ fun Application.configureRouting() {
             call.respondText("Hello World!")
         }
 
-        route("/produkt") {
+        route("/product") {
             get("/{barcode}") {
                 val barcode = call.parameters["barcode"]
+
                 if (barcode == null) {
                     call.respondText("Brakuje barcode", status = HttpStatusCode.BadRequest)
+                    return@get
                 }
 
-                call.respond(
+                val productWithIngredients = transaction {
+                    val productRow = Products.selectAll().where { Products.barcode eq barcode }.singleOrNull()
+                    if (productRow == null) {
+                        return@transaction null
+                    }
+
+                    val productId = productRow[Products.id]
+
+                    val ingredients = IngredientsTable
+                        .selectAll()
+                        .where { IngredientsTable.product eq productId }
+                        .map {
+                            Ingredient(
+                                name = it[IngredientsTable.name],
+                                tag = it[IngredientsTable.tag]
+                            )
+                        }
+
                     ProductResponse(
-                        name = "Test produkt",
-                        macros = Macros(22.0, 30.0, 5.0, 400.0),
-                        ingredients = listOf(
-                            Ingredient("olej palmowy", "red"),
-                            Ingredient("kakao", "green"),
-                            Ingredient("woda", "neutral")
+                        name = productRow[Products.name],
+                        macros = Macros(
+                            calories = productRow[Products.calories],
+                            protein = productRow[Products.protein],
+                            fat = productRow[Products.fat],
+                            carbs = productRow[Products.carbs],
                         ),
+                        ingredients = ingredients,
                     )
-                )
+                }
+
+                if (productWithIngredients == null) {
+                    call.respond(HttpStatusCode.NotFound)
+                } else {
+                    call.respond(productWithIngredients)
+                }
             }
 
-            post {
+            post("/save") {
                 val product = call.receive<ProductRequest>()
-                call.respond(product)
+                transaction {
+                    val productId = Products.insertAndGetId {
+                        it[barcode] = product.barcode
+                        it[name] = product.name
+                        it[calories] = product.macrosPer100g.calories
+                        it[protein] = product.macrosPer100g.protein
+                        it[fat] = product.macrosPer100g.fat
+                        it[carbs] = product.macrosPer100g.carbs
+                        it[weight] = product.grams
+                    }
+
+                    product.ingredients.forEach { ingredientName ->
+                        IngredientsTable.insert {
+                            it[IngredientsTable.product] = productId
+                            it[name] = ingredientName
+                            it[tag] = getTagForIngredient(ingredientName)
+                        }
+                    }
+                }
+                call.respondText("Produkt i składniki zapisane")
+            }
+
+            get("/all") {
+                val products = transaction {
+                    Products.selectAll().map {
+                        ProductDTO(
+                            barcode = it[Products.barcode],
+                            name = it[Products.name],
+                            calories = it[Products.calories],
+                            protein = it[Products.protein],
+                            fat = it[Products.fat],
+                            carbs = it[Products.carbs],
+                            weight = it[Products.weight]
+                        )
+                    }
+                }
+                call.respond(products)
             }
         }
     }
 }
 
-@Serializable
-data class ProductRequest(
-    val barcode: String,
-    val name: String,
-    val grams: Double,
-    val macrosPer100g: Macros,
-    val ingredients: List<String>
-)
-
-@Serializable
-data class ProductResponse(
-    val name: String,
-    val macros: Macros,
-    val ingredients: List<Ingredient>
-)
-
-@Serializable
-data class Macros(
-    val protein: Double,
-    val carbs: Double,
-    val fat: Double,
-    val calories: Double
-)
-
-@Serializable
-data class Ingredient(
-    val name: String,
-    val tag: String // "green", "red", "neutral"
-)
+fun getTagForIngredient(ingredientName: String): String {
+    return "neutral"
+}
