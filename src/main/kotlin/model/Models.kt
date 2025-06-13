@@ -2,6 +2,11 @@ package com.example.model
 
 import kotlinx.serialization.Serializable
 
+data class User(
+    val id: Int,
+    val uid: String
+)
+
 @Serializable
 data class ProductDTO(
     val barcode: String,
