@@ -1,6 +1,7 @@
 package com.example
 
 import io.ktor.server.application.*
+import com.example.utils.FirebaseAdmin
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
@@ -8,6 +9,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     DatabaseFactory.init()
+    FirebaseAdmin.init()
 
     configureSerialization()
     configureMonitoring()
@@ -15,3 +17,4 @@ fun Application.module() {
     configureHTTP()
     configureRouting()
 }
+

@@ -38,4 +38,13 @@ dependencies {
 
     // SQLite driver
     implementation("org.xerial:sqlite-jdbc:3.45.3.0")
+
+    // Ktor Client (CIO)
+    implementation("io.ktor:ktor-client-core:2.3.9")
+    implementation("io.ktor:ktor-client-cio:2.3.9")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.9")
+
+    // Firebase
+    implementation("com.google.firebase:firebase-admin:9.2.0")
+
 }
