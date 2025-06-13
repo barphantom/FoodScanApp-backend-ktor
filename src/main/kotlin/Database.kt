@@ -3,9 +3,11 @@ package com.example
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.transactions.transaction
 
+object Users : IntIdTable() {
+    val uid = varchar("uid", 128).uniqueIndex() // Firebase uid
+}
 
 object Products : IntIdTable() {
     val barcode = varchar("barcode", 20).uniqueIndex()
@@ -15,6 +17,7 @@ object Products : IntIdTable() {
     val fat = double("fat")
     val carbs = double("carbs")
     val weight = double("weight")
+    val user = reference("user_id", Users)
 }
 
 object IngredientsTable : IntIdTable() {
@@ -28,7 +31,7 @@ object DatabaseFactory {
         Database.connect("jdbc:sqlite:myapp.db", driver = "org.sqlite.JDBC")
 
         transaction {
-            SchemaUtils.create(Products, IngredientsTable)
+            SchemaUtils.create(Products, IngredientsTable, Users)
         }
     }
 }
