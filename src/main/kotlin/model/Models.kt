@@ -8,7 +8,7 @@ data class User(
 )
 
 @Serializable
-data class ProductDTO(
+data class SavedProduct(
     val barcode: String,
     val name: String,
     val calories: Double,

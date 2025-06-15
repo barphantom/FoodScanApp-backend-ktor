@@ -25,9 +25,10 @@ fun Application.configureRouting() {
         get("/") {
             call.respondText("Hello World!")
             call.principal<UserIdPrincipal>()?.name
+
         }
 
-        authenticate {
+        authenticate("firebase") {
             route("/product") {
                 get("/{barcode}") {
                     val barcode = call.parameters["barcode"]
@@ -110,10 +111,8 @@ fun Application.configureRouting() {
                     }
 
                     val user = userRepository.findByUid(currentUserUID)
-                    if (user == null) {
-                        call.respond(HttpStatusCode.NotFound)
-                        return@post
-                    }
+                        ?: userRepository.createUser(currentUserUID)
+
 
                     val alreadyExists = transaction {
                         val p = Products
@@ -171,7 +170,7 @@ fun Application.configureRouting() {
                     val products = transaction {
                         Products.selectAll().where { Products.user eq findUser.id }
                             .map {
-                                ProductDTO(
+                                SavedProduct(
                                     barcode = it[Products.barcode],
                                     name = it[Products.name],
                                     calories = it[Products.calories],

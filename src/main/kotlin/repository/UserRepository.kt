@@ -6,6 +6,7 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 
+
 class UserRepository {
     fun findByUid(uid: String): User? {
         return transaction {
